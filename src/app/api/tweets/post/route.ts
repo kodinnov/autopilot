@@ -20,18 +20,7 @@ export async function POST(req: NextRequest) {
     const name = `${user.firstName || ''} ${user.lastName || ''}`.trim()
     await upsertUser(user.id, email, name)
 
-    // Get tokens from DB
-    const tokenRow = await getUserTokens(user.id)
-    if (!tokenRow) {
-      return NextResponse.json(
-        { error: 'Twitter not connected. Please connect your X account first.' },
-        { status: 400 }
-      )
-    }
-
-    const accessToken = tokenRow.access_token
-
-    // If scheduled for later — save to DB
+    // ── Scheduling: save to DB, no tokens needed yet ──────────────────────────
     if (scheduledAt) {
       const scheduledTime = new Date(scheduledAt)
       if (scheduledTime.getTime() <= Date.now()) {
@@ -41,11 +30,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, scheduled: true, scheduledAt, message: 'Tweet scheduled!' })
     }
 
-    // Post immediately via X API v2
+    // ── Post immediately: tokens required ─────────────────────────────────────
+    const tokenRow = await getUserTokens(user.id)
+    if (!tokenRow) {
+      return NextResponse.json(
+        { error: 'Twitter not connected. Please connect your X account first.' },
+        { status: 400 }
+      )
+    }
+
     const response = await fetch('https://api.twitter.com/2/tweets', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${accessToken}`,
+        'Authorization': `Bearer ${tokenRow.access_token}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ text: content }),
@@ -67,6 +64,7 @@ export async function POST(req: NextRequest) {
     })
   } catch (error) {
     console.error('Post error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    const message = error instanceof Error ? error.message : 'Internal server error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

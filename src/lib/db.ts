@@ -2,8 +2,13 @@ import postgres from 'postgres'
 
 const DATABASE_URL = process.env.DATABASE_URL!
 
-// Singleton connection
-const sql = postgres(DATABASE_URL, { ssl: 'require' })
+// Serverless-safe connection: short idle timeout, max 1 connection per function
+const sql = postgres(DATABASE_URL, {
+  ssl: 'require',
+  max: 1,
+  idle_timeout: 20,
+  connect_timeout: 10,
+})
 
 export default sql
 
