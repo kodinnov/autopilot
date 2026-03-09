@@ -20,7 +20,7 @@ function getPool(): Pool {
   return _pool
 }
 
-async function query<T = Record<string, unknown>>(text: string, params?: unknown[]): Promise<T[]> {
+export async function query<T = Record<string, unknown>>(text: string, params?: unknown[]): Promise<T[]> {
   const client = await getPool().connect()
   try {
     const result = await client.query(text, params)

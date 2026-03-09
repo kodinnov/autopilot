@@ -15,6 +15,7 @@ export default function SchedulePage() {
   const [scheduledPosts, setScheduledPosts] = useState<ScheduledPost[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
 
   useEffect(() => {
     fetch('/api/tweets/scheduled')
@@ -26,6 +27,16 @@ export default function SchedulePage() {
       .catch(() => setError('Failed to load scheduled posts'))
       .finally(() => setLoading(false))
   }, [])
+
+  const handleDelete = async (id: string) => {
+    setDeleting(id)
+    try {
+      const res = await fetch(`/api/tweets/scheduled/${id}`, { method: 'DELETE' })
+      if (res.ok) setScheduledPosts((prev) => prev.filter((p) => p.id !== id))
+    } finally {
+      setDeleting(null)
+    }
+  }
 
   const statusStyle = (status: ScheduledPost['status']) => {
     const map = {
@@ -153,6 +164,22 @@ export default function SchedulePage() {
                         View on X →
                       </a>
                     )}
+                    <button
+                      onClick={() => handleDelete(post.id)}
+                      disabled={deleting === post.id}
+                      style={{
+                        background: 'rgba(239,68,68,0.12)',
+                        color: deleting === post.id ? 'rgba(239,68,68,0.4)' : '#f87171',
+                        border: '1px solid rgba(239,68,68,0.2)',
+                        borderRadius: '8px',
+                        padding: '4px 10px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: deleting === post.id ? 'not-allowed' : 'pointer',
+                      }}
+                    >
+                      {deleting === post.id ? '...' : '🗑 Delete'}
+                    </button>
                   </div>
                 </div>
               </div>
