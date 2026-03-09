@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { currentUser } from '@clerk/nextjs/server'
+import { logUsage, checkQuota, COSTS } from '@/lib/usage'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -19,6 +20,12 @@ export async function POST(req: NextRequest) {
   try {
     const user = await currentUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // Check quota
+    const quota = await checkQuota(user.id)
+    if (!quota.allowed) {
+      return NextResponse.json({ error: quota.reason }, { status: 402 })
+    }
 
     const { location, date, contentType, platforms, imageBase64, mimeType } = await req.json()
 
@@ -80,6 +87,13 @@ Respond ONLY with a valid JSON object where keys are platform names and values a
 
     const data = await response.json()
     const text = data.choices?.[0]?.message?.content?.trim() || '{}'
+
+    // Log usage
+    await logUsage(user.id, {
+      service: 'xai',
+      action: 'caption',
+      estimatedCostUsd: COSTS.xai_caption,
+    })
 
     try {
       const captions = JSON.parse(text)

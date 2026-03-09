@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { currentUser } from '@clerk/nextjs/server'
+import { logUsage, checkQuota, COSTS } from '@/lib/usage'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -17,6 +18,12 @@ export async function POST(req: NextRequest) {
   try {
     const user = await currentUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // Check quota
+    const quota = await checkQuota(user.id)
+    if (!quota.allowed) {
+      return NextResponse.json({ error: quota.reason }, { status: 402 })
+    }
 
     if (!SHOTSTACK_API_KEY) {
       return NextResponse.json({ error: 'Shotstack API key not configured' }, { status: 500 })
@@ -85,6 +92,13 @@ export async function POST(req: NextRequest) {
     }
 
     const data = await res.json()
+
+    // Log usage
+    await logUsage(user.id, {
+      service: 'shotstack',
+      action: 'render',
+      estimatedCostUsd: COSTS.shotstack_render,
+    })
 
     return NextResponse.json({
       jobId: data.response?.id,

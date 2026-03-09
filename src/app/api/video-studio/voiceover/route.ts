@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { currentUser } from '@clerk/nextjs/server'
 import { put } from '@vercel/blob'
+import { logUsage, checkQuota, COSTS } from '@/lib/usage'
 
 export const dynamic = 'force-dynamic'
 export const maxDuration = 60
@@ -19,6 +20,12 @@ export async function POST(req: NextRequest) {
   try {
     const user = await currentUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    // Check quota
+    const quota = await checkQuota(user.id)
+    if (!quota.allowed) {
+      return NextResponse.json({ error: quota.reason }, { status: 402 })
+    }
 
     if (!ELEVENLABS_API_KEY) {
       return NextResponse.json({ error: 'ElevenLabs API key not configured' }, { status: 500 })
@@ -61,6 +68,14 @@ export async function POST(req: NextRequest) {
     const blob = await put(`voiceovers/${user.id}/${Date.now()}.mp3`, audioBuffer, {
       access: 'public',
       contentType: 'audio/mpeg',
+    })
+
+    // Log usage (cost based on character count)
+    await logUsage(user.id, {
+      service: 'elevenlabs',
+      action: 'voiceover',
+      tokensUsed: script.length,
+      estimatedCostUsd: script.length * COSTS.elevenlabs_voiceover,
     })
 
     return NextResponse.json({
