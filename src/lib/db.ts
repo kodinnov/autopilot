@@ -1,32 +1,40 @@
-import postgres from 'postgres'
+import { Pool } from 'pg'
 
-const DATABASE_URL = process.env.DATABASE_URL!
-
-// Serverless-safe connection: short idle timeout, max 1 connection per function
-const sql = postgres(DATABASE_URL, {
-  ssl: 'require',
+// Serverless-safe pool: minimal connections, short timeouts
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
   max: 1,
-  idle_timeout: 20,
-  connect_timeout: 10,
+  idleTimeoutMillis: 10000,
+  connectionTimeoutMillis: 10000,
 })
 
-export default sql
+async function query<T = Record<string, unknown>>(text: string, params?: unknown[]): Promise<T[]> {
+  const client = await pool.connect()
+  try {
+    const result = await client.query(text, params)
+    return result.rows as T[]
+  } finally {
+    client.release()
+  }
+}
 
 // ─── Users ────────────────────────────────────────────────────────────────────
 export async function upsertUser(clerkId: string, email: string, name: string) {
-  const [user] = await sql`
-    INSERT INTO users (clerk_id, email, name)
-    VALUES (${clerkId}, ${email}, ${name})
-    ON CONFLICT (clerk_id) DO UPDATE
-    SET email = EXCLUDED.email, name = EXCLUDED.name, updated_at = NOW()
-    RETURNING *
-  `
-  return user
+  const rows = await query(
+    `INSERT INTO users (clerk_id, email, name)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (clerk_id) DO UPDATE
+     SET email = EXCLUDED.email, name = EXCLUDED.name, updated_at = NOW()
+     RETURNING *`,
+    [clerkId, email, name]
+  )
+  return rows[0]
 }
 
 export async function getUserByClerkId(clerkId: string) {
-  const [user] = await sql`SELECT * FROM users WHERE clerk_id = ${clerkId}`
-  return user || null
+  const rows = await query('SELECT * FROM users WHERE clerk_id = $1', [clerkId])
+  return rows[0] || null
 }
 
 // ─── Tokens ───────────────────────────────────────────────────────────────────
@@ -36,20 +44,21 @@ export async function saveUserTokens(
   refreshToken: string | null,
   expiresAt: Date
 ) {
-  await sql`
-    INSERT INTO tokens (clerk_id, access_token, refresh_token, expires_at)
-    VALUES (${clerkId}, ${accessToken}, ${refreshToken}, ${expiresAt})
-    ON CONFLICT (clerk_id) DO UPDATE
-    SET access_token = EXCLUDED.access_token,
-        refresh_token = EXCLUDED.refresh_token,
-        expires_at = EXCLUDED.expires_at,
-        updated_at = NOW()
-  `
+  await query(
+    `INSERT INTO tokens (clerk_id, access_token, refresh_token, expires_at)
+     VALUES ($1, $2, $3, $4)
+     ON CONFLICT (clerk_id) DO UPDATE
+     SET access_token = EXCLUDED.access_token,
+         refresh_token = EXCLUDED.refresh_token,
+         expires_at = EXCLUDED.expires_at,
+         updated_at = NOW()`,
+    [clerkId, accessToken, refreshToken, expiresAt]
+  )
 }
 
 export async function getUserTokens(clerkId: string) {
-  const [row] = await sql`SELECT * FROM tokens WHERE clerk_id = ${clerkId}`
-  return row || null
+  const rows = await query('SELECT * FROM tokens WHERE clerk_id = $1', [clerkId])
+  return rows[0] || null
 }
 
 // ─── Scheduled Posts ──────────────────────────────────────────────────────────
@@ -58,26 +67,33 @@ export async function saveScheduledPost(
   content: string,
   scheduledFor: Date
 ) {
-  const [post] = await sql`
-    INSERT INTO scheduled_tweets (clerk_id, content, scheduled_for, status)
-    VALUES (${clerkId}, ${content}, ${scheduledFor}, 'pending')
-    RETURNING *
-  `
-  return post
+  const rows = await query(
+    `INSERT INTO scheduled_tweets (clerk_id, content, scheduled_for, status)
+     VALUES ($1, $2, $3, 'pending')
+     RETURNING *`,
+    [clerkId, content, scheduledFor]
+  )
+  return rows[0]
 }
 
 export async function getScheduledPosts(clerkId: string) {
-  return sql`
-    SELECT * FROM scheduled_tweets
-    WHERE clerk_id = ${clerkId}
-    ORDER BY scheduled_for ASC
-  `
+  return query(
+    `SELECT * FROM scheduled_tweets
+     WHERE clerk_id = $1
+     ORDER BY scheduled_for ASC`,
+    [clerkId]
+  )
 }
 
-export async function updatePostStatus(id: string, status: 'pending' | 'posted' | 'failed', tweetId?: string) {
-  await sql`
-    UPDATE scheduled_tweets
-    SET status = ${status}, tweet_id = ${tweetId || null}, updated_at = NOW()
-    WHERE id = ${id}
-  `
+export async function updatePostStatus(
+  id: string,
+  status: 'pending' | 'posted' | 'failed',
+  tweetId?: string
+) {
+  await query(
+    `UPDATE scheduled_tweets
+     SET status = $1, tweet_id = $2, updated_at = NOW()
+     WHERE id = $3`,
+    [status, tweetId || null, id]
+  )
 }
