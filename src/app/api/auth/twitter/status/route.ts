@@ -1,19 +1,19 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { currentUser } from '@clerk/nextjs/server'
+import { query } from '@/lib/db'
 
-export async function GET(req: NextRequest) {
+export const dynamic = 'force-dynamic'
+
+export async function GET() {
   const user = await currentUser()
   if (!user) return NextResponse.json({ connected: false })
 
-  const cookieHeader = req.headers.get('cookie') || ''
-  const tokensCookie = cookieHeader.match(/x_tokens=([^;]+)/)?.[1]
-
-  if (!tokensCookie) return NextResponse.json({ connected: false })
-
   try {
-    const tokens = JSON.parse(decodeURIComponent(tokensCookie))
-    const connected = !!tokens.accessToken
-    return NextResponse.json({ connected })
+    const rows = await query(
+      'SELECT access_token FROM tokens WHERE clerk_id = $1 LIMIT 1',
+      [user.id]
+    )
+    return NextResponse.json({ connected: rows.length > 0 && !!rows[0].access_token })
   } catch {
     return NextResponse.json({ connected: false })
   }
