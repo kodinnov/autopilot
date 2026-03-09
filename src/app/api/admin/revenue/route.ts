@@ -54,7 +54,7 @@ export async function GET() {
 
     if (STRIPE_SECRET_KEY && STRIPE_SECRET_KEY.startsWith('sk_')) {
       try {
-        const stripe = new Stripe(STRIPE_SECRET_KEY, { apiVersion: '2025-02-24.acacia' })
+        const stripe = new Stripe(STRIPE_SECRET_KEY)
 
         // Get recent charges
         const charges = await stripe.charges.list({ limit: 20 })
