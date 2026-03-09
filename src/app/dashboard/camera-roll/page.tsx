@@ -48,6 +48,9 @@ export default function CameraRollPage() {
   const [statusMsg, setStatusMsg] = useState('')
   const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(['twitter', 'instagram'])
   const [scheduledCount, setScheduledCount] = useState(0)
+  const [urlInput, setUrlInput] = useState('')
+  const [urlError, setUrlError] = useState('')
+  const [urlLoading, setUrlLoading] = useState(false)
 
   const toBase64 = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
@@ -144,6 +147,34 @@ export default function CameraRollPage() {
     setProcessing(false)
     setStatusMsg('')
   }, [])
+
+  const addFromUrl = async () => {
+    const url = urlInput.trim()
+    if (!url) return
+    setUrlError('')
+    setUrlLoading(true)
+    try {
+      // Detect type from URL or content-type
+      const ext = url.split('?')[0].split('.').pop()?.toLowerCase() || ''
+      const isVideo = ['mp4', 'mov', 'webm', 'avi'].includes(ext)
+      const mimeType = isVideo ? 'video/mp4' : 'image/jpeg'
+
+      // Fetch as blob to create a File object
+      const response = await fetch(url)
+      if (!response.ok) throw new Error(`Failed to fetch: ${response.status}`)
+      const blob = await response.blob()
+      const actualMime = blob.type || mimeType
+      const fileName = url.split('/').pop()?.split('?')[0] || `url-media-${Date.now()}.jpg`
+      const file = new File([blob], fileName, { type: actualMime })
+
+      setUrlInput('')
+      await handleFiles([file])
+    } catch (e) {
+      setUrlError(e instanceof Error ? e.message : 'Failed to load URL')
+    } finally {
+      setUrlLoading(false)
+    }
+  }
 
   const toggleSelect = (id: string) => {
     setFiles(prev => prev.map(f => f.id === id ? { ...f, selected: !f.selected } : f))
@@ -262,6 +293,7 @@ export default function CameraRollPage() {
 
       {/* ── STEP 1: Upload ── */}
       {step === 'upload' && (
+        <div>
         <div
           onDragOver={e => e.preventDefault()}
           onDrop={e => { e.preventDefault(); handleFiles(e.dataTransfer.files) }}
@@ -302,6 +334,57 @@ export default function CameraRollPage() {
             style={{ display: 'none' }}
             onChange={e => { if (e.target.files) handleFiles(e.target.files) }}
           />
+        </div>
+
+        {/* Divider */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', maxWidth: '640px', margin: '20px 0' }}>
+          <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
+          <span style={{ color: 'rgba(255,255,255,0.25)', fontSize: '12px', fontWeight: 600 }}>OR</span>
+          <div style={{ flex: 1, height: '1px', background: 'rgba(255,255,255,0.08)' }} />
+        </div>
+
+        {/* URL input */}
+        <div style={{ maxWidth: '640px' }}>
+          <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '13px', fontWeight: 600, margin: '0 0 10px' }}>
+            🔗 Add from URL
+          </p>
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <input
+              type="url"
+              placeholder="https://example.com/photo.jpg"
+              value={urlInput}
+              onChange={e => { setUrlInput(e.target.value); setUrlError('') }}
+              onKeyDown={e => { if (e.key === 'Enter') addFromUrl() }}
+              style={{
+                flex: 1,
+                background: 'rgba(255,255,255,0.05)',
+                border: `1px solid ${urlError ? 'rgba(239,68,68,0.5)' : 'rgba(255,255,255,0.1)'}`,
+                borderRadius: '12px',
+                padding: '11px 16px',
+                color: '#fff',
+                fontSize: '14px',
+                outline: 'none',
+              }}
+            />
+            <button
+              onClick={addFromUrl}
+              disabled={urlLoading || !urlInput.trim()}
+              style={{
+                background: urlInput.trim() ? 'linear-gradient(135deg,#a855f7,#6366f1)' : 'rgba(255,255,255,0.06)',
+                color: '#fff', border: 'none', borderRadius: '12px',
+                padding: '11px 20px', fontSize: '14px', fontWeight: 700,
+                cursor: urlInput.trim() && !urlLoading ? 'pointer' : 'not-allowed',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {urlLoading ? '…' : '+ Add'}
+            </button>
+          </div>
+          {urlError && <p style={{ color: '#f87171', fontSize: '12px', margin: '6px 0 0' }}>⚠️ {urlError}</p>}
+          <p style={{ color: 'rgba(255,255,255,0.2)', fontSize: '11px', margin: '6px 0 0' }}>
+            Supports direct image/video URLs (jpg, png, webp, mp4, etc.)
+          </p>
+        </div>
         </div>
       )}
 
