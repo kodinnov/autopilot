@@ -11,14 +11,14 @@ export const COSTS = {
 } as const
 
 // Plan limits (monthly)
-export const PLANS = {
+export const PLANS: Record<string, { videos: number; aiCalls: number; costCap: number }> = {
   free: { videos: 2, aiCalls: 50, costCap: 1 },
   starter: { videos: 10, aiCalls: 500, costCap: 15 },
   pro: { videos: -1, aiCalls: 2000, costCap: 40 }, // -1 = unlimited
   agency: { videos: -1, aiCalls: 10000, costCap: 150 },
-} as const
+}
 
-export type PlanType = keyof typeof PLANS
+export type PlanType = 'free' | 'starter' | 'pro' | 'agency'
 
 export interface UsageLog {
   service: 'xai' | 'elevenlabs' | 'shotstack' | 'x_api'
