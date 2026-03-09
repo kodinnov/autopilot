@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { currentUser } from '@clerk/nextjs/server'
+import { getUserTokens, upsertUser, saveScheduledPost } from '@/lib/db'
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,27 +15,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Content must be 1-280 characters' }, { status: 400 })
     }
 
-    // Get user's X tokens from cookie
-    const cookieHeader = req.headers.get('cookie') || ''
-    const tokensCookie = cookieHeader.match(/x_tokens=([^;]+)/)?.[1]
+    // Ensure user exists in DB
+    const email = user.emailAddresses?.[0]?.emailAddress || ''
+    const name = `${user.firstName || ''} ${user.lastName || ''}`.trim()
+    await upsertUser(user.id, email, name)
 
-    if (!tokensCookie) {
-      return NextResponse.json({ error: 'Twitter not connected. Please connect your X account first.' }, { status: 400 })
+    // Get tokens from DB
+    const tokenRow = await getUserTokens(user.id)
+    if (!tokenRow) {
+      return NextResponse.json(
+        { error: 'Twitter not connected. Please connect your X account first.' },
+        { status: 400 }
+      )
     }
 
-    const tokens = JSON.parse(decodeURIComponent(tokensCookie))
-    const accessToken = tokens.accessToken
+    const accessToken = tokenRow.access_token
 
-    if (!accessToken) {
-      return NextResponse.json({ error: 'Invalid Twitter tokens' }, { status: 400 })
-    }
-
-    // If scheduled for later
+    // If scheduled for later — save to DB
     if (scheduledAt) {
-      const scheduledTime = new Date(scheduledAt).getTime()
-      if (scheduledTime <= Date.now()) {
+      const scheduledTime = new Date(scheduledAt)
+      if (scheduledTime.getTime() <= Date.now()) {
         return NextResponse.json({ error: 'Scheduled time must be in the future' }, { status: 400 })
       }
+      await saveScheduledPost(user.id, content, scheduledTime)
       return NextResponse.json({ success: true, scheduled: true, scheduledAt, message: 'Tweet scheduled!' })
     }
 
@@ -60,7 +63,7 @@ export async function POST(req: NextRequest) {
       success: true,
       scheduled: false,
       tweetId: tweet.data?.id,
-      message: 'Tweet posted successfully!'
+      message: 'Tweet posted successfully!',
     })
   } catch (error) {
     console.error('Post error:', error)

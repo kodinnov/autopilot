@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { currentUser } from '@clerk/nextjs/server'
+import { upsertUser, saveUserTokens } from '@/lib/db'
 
 const X_TOKEN_URL = 'https://api.twitter.com/2/oauth2/token'
 const X_CLIENT_ID = (process.env.X_OAUTH_CLIENT_ID || '').trim()
@@ -31,7 +32,7 @@ export async function GET(req: NextRequest) {
   try {
     // Exchange code for tokens
     const credentials = btoa(`${X_CLIENT_ID}:${X_CLIENT_SECRET}`)
-    
+
     const response = await fetch(X_TOKEN_URL, {
       method: 'POST',
       headers: {
@@ -54,19 +55,22 @@ export async function GET(req: NextRequest) {
     }
 
     const tokens = await response.json()
-    
-    // In production: store tokens securely in database associated with user
-    // For MVP: store in encrypted cookie or server-side session
-    const tokensJson = JSON.stringify({
-      accessToken: tokens.access_token,
-      refreshToken: tokens.refresh_token,
-      expiresAt: Date.now() + (tokens.expires_in * 1000),
-    })
+    const expiresAt = new Date(Date.now() + tokens.expires_in * 1000)
 
-    const tokensCookie = `x_tokens=${encodeURIComponent(tokensJson)}; HttpOnly; Path=/; Max-Age=${tokens.expires_in}; SameSite=Lax`
+    // Upsert user in DB
+    const email = user.emailAddresses?.[0]?.emailAddress || ''
+    const name = `${user.firstName || ''} ${user.lastName || ''}`.trim()
+    await upsertUser(user.id, email, name)
 
+    // Store tokens in DB (not cookies)
+    await saveUserTokens(user.id, tokens.access_token, tokens.refresh_token || null, expiresAt)
+
+    // Set a simple "connected" flag cookie (no sensitive data)
     const response2 = NextResponse.redirect(new URL('/dashboard/connections?connected=true', req.url))
-    response2.headers.set('Set-Cookie', tokensCookie)
+    response2.headers.set(
+      'Set-Cookie',
+      `x_connected=1; HttpOnly; Path=/; Max-Age=31536000; SameSite=Lax`
+    )
     return response2
   } catch (error) {
     console.error('OAuth error:', error)
