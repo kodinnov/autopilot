@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { currentUser } from '@clerk/nextjs/server'
 
-// In production, fetch from database based on user ID
-function getUserTokens(): { accessToken: string } | null {
-  // TODO: Fetch from database using currentUser().id
-  return null
-}
-
 export async function POST(req: NextRequest) {
   try {
     const user = await currentUser()
@@ -20,38 +14,35 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Content must be 1-280 characters' }, { status: 400 })
     }
 
-    // Get user's X tokens
-    const tokens = getUserTokens()
-    if (!tokens) {
-      return NextResponse.json({ error: 'Twitter not connected' }, { status: 400 })
+    // Get user's X tokens from cookie
+    const cookieHeader = req.headers.get('cookie') || ''
+    const tokensCookie = cookieHeader.match(/x_tokens=([^;]+)/)?.[1]
+
+    if (!tokensCookie) {
+      return NextResponse.json({ error: 'Twitter not connected. Please connect your X account first.' }, { status: 400 })
     }
 
-    // If scheduled for later, add to queue
+    const tokens = JSON.parse(decodeURIComponent(tokensCookie))
+    const accessToken = tokens.accessToken
+
+    if (!accessToken) {
+      return NextResponse.json({ error: 'Invalid Twitter tokens' }, { status: 400 })
+    }
+
+    // If scheduled for later
     if (scheduledAt) {
       const scheduledTime = new Date(scheduledAt).getTime()
-      const now = Date.now()
-      
-      if (scheduledTime <= now) {
+      if (scheduledTime <= Date.now()) {
         return NextResponse.json({ error: 'Scheduled time must be in the future' }, { status: 400 })
       }
-
-      // Add to BullMQ queue (implemented separately)
-      // For now, return success with scheduled flag
-      return NextResponse.json({ 
-        success: true, 
-        scheduled: true, 
-        scheduledAt,
-        message: 'Tweet scheduled successfully'
-      })
+      return NextResponse.json({ success: true, scheduled: true, scheduledAt, message: 'Tweet scheduled!' })
     }
 
-    // Post immediately
-    const X_API_URL = 'https://api.twitter.com/2/tweets'
-    
-    const response = await fetch(X_API_URL, {
+    // Post immediately via X API v2
+    const response = await fetch('https://api.twitter.com/2/tweets', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${tokens.accessToken}`,
+        'Authorization': `Bearer ${accessToken}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({ text: content }),
@@ -60,16 +51,16 @@ export async function POST(req: NextRequest) {
     if (!response.ok) {
       const error = await response.text()
       console.error('Tweet failed:', error)
-      return NextResponse.json({ error: 'Failed to post tweet' }, { status: response.status })
+      return NextResponse.json({ error: 'Failed to post tweet: ' + error }, { status: response.status })
     }
 
     const tweet = await response.json()
-    
-    return NextResponse.json({ 
-      success: true, 
+
+    return NextResponse.json({
+      success: true,
       scheduled: false,
       tweetId: tweet.data?.id,
-      message: 'Tweet posted successfully'
+      message: 'Tweet posted successfully!'
     })
   } catch (error) {
     console.error('Post error:', error)

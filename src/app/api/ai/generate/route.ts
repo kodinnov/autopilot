@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { currentUser } from '@clerk/nextjs/server'
 import OpenAI from 'openai'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const getOpenAI = () => new OpenAI({
+  apiKey: process.env.XAI_API_KEY || 'placeholder',
+  baseURL: 'https://api.x.ai/v1',
 })
 
 export async function POST(req: NextRequest) {
@@ -21,18 +22,18 @@ export async function POST(req: NextRequest) {
 
     const maxLength = platform === 'twitter' ? 280 : 2200
     
-    const prompt = `You are a social media expert helping a personal brand grow their following. 
-Generate an engaging ${platform} post about: "${topic}"
+    const prompt = `You are a social media expert. Generate exactly 3 tweets about: "${topic}"
 - Tone: ${tone}
-- Max length: ${maxLength} characters
-- Include relevant hashtags if appropriate
-- Make it engaging and authentic
-- Write in first person as the personal brand
+- Max ${maxLength} characters each
+- Include relevant hashtags
+- Write in first person
+- Output ONLY the 3 tweets separated by blank lines
+- No numbering, no markdown, no labels, no character counts, no "Option X"
+- Just the raw tweet text`
 
-Generate 3 different options:`
-
+    const openai = getOpenAI()
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+      model: 'grok-3-mini',
       messages: [
         { role: 'system', content: 'You are a social media expert.' },
         { role: 'user', content: prompt },

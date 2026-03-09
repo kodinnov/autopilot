@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { currentUser } from '@clerk/nextjs/server'
 
 const X_TOKEN_URL = 'https://api.twitter.com/2/oauth2/token'
-const X_CLIENT_ID = process.env.X_OAUTH_CLIENT_ID!
-const X_CLIENT_SECRET = process.env.X_OAUTH_CLIENT_SECRET!
-const REDIRECT_URI = process.env.NEXT_PUBLIC_APP_URL + '/api/auth/twitter/callback'
+const X_CLIENT_ID = (process.env.X_OAUTH_CLIENT_ID || '').trim()
+const X_CLIENT_SECRET = (process.env.X_OAUTH_CLIENT_SECRET || '').trim()
+const REDIRECT_URI = 'https://autopilot-self.vercel.app/api/auth/twitter/callback'
 
 export async function GET(req: NextRequest) {
   const user = await currentUser()
@@ -49,7 +49,8 @@ export async function GET(req: NextRequest) {
     if (!response.ok) {
       const error = await response.text()
       console.error('Token exchange failed:', error)
-      return NextResponse.redirect(new URL('/dashboard/connections?error=auth_failed', req.url))
+      const msg = encodeURIComponent(error.slice(0, 200))
+      return NextResponse.redirect(new URL(`/dashboard/connections?error=${msg}`, req.url))
     }
 
     const tokens = await response.json()

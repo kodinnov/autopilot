@@ -3,7 +3,7 @@ import { currentUser } from '@clerk/nextjs/server'
 
 const X_AUTH_URL = 'https://twitter.com/i/oauth2/authorize'
 const X_CLIENT_ID = process.env.X_OAUTH_CLIENT_ID!
-const REDIRECT_URI = process.env.NEXT_PUBLIC_APP_URL + '/api/auth/twitter/callback'
+const REDIRECT_URI = 'https://autopilot-self.vercel.app/api/auth/twitter/callback'
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export async function GET(req: NextRequest) {

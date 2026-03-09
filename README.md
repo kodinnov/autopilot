@@ -26,7 +26,7 @@ Create a `.env.local` file with these keys:
 | `CLERK_SECRET_KEY` | Clerk secret key | Same as above |
 | `X_OAUTH_CLIENT_ID` | X OAuth Client ID | [developer.x.com](https://developer.x.com) → Your App → OAuth ID |
 | `X_OAUTH_CLIENT_SECRET` | X OAuth Client Secret | [developer.x.com](https://developer.x.com) → Your App → OAuth Client Secret |
-| `OPENAI_API_KEY` | OpenAI API key | [platform.openai.com](https://platform.openai.com) → API Keys |
+| `XAI_API_KEY` | xAI (Grok) API key | [console.x.ai](https://console.x.ai) → API Keys |
 
 ### Optional Keys
 
@@ -64,7 +64,7 @@ src/
 1. **Connect X Account** - OAuth 2.0 PKCE flow via `/api/auth/twitter`
 2. **Post Now** - Immediate tweet posting via `/api/tweets/post`
 3. **Schedule Posts** - Queue tweets for later via BullMQ + Redis
-4. **AI Content Generation** - Generate tweet drafts via OpenAI GPT-4
+4. **AI Content Generation** - Generate tweet drafts via Grok (xAI)
 
 ## Tech Stack
 
@@ -72,7 +72,7 @@ src/
 - **Auth**: Clerk
 - **Database**: PostgreSQL (Supabase/Neon) - optional for MVP
 - **Queue**: BullMQ + Redis - optional for MVP
-- **AI**: OpenAI
+- **AI**: Grok (xAI)
 
 ## Development
 
