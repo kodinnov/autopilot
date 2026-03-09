@@ -20,7 +20,8 @@ export async function GET() {
 
     return NextResponse.json({ posts })
   } catch (error) {
-    console.error('Scheduled posts fetch error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    const msg = error instanceof Error ? error.message : String(error)
+    console.error('Scheduled posts fetch error:', msg)
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
