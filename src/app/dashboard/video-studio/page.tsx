@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 
 type Step = 'upload' | 'analyzing' | 'preview' | 'voice' | 'render' | 'done'
 
@@ -59,10 +59,9 @@ export default function VideoStudioPage() {
   const [progress, setProgress] = useState(0)
   const [statusMsg, setStatusMsg] = useState('')
   const [error, setError] = useState('')
-  const videoRef = useRef<HTMLVideoElement>(null)
 
   // Extract frames from video using canvas
-  const extractFrames = useCallback(async (video: HTMLVideoElement, file: File): Promise<{ timestamp: number; base64: string }[]> => {
+  const extractFrames = useCallback(async (video: HTMLVideoElement): Promise<{ timestamp: number; base64: string }[]> => {
     const canvas = document.createElement('canvas')
     const ctx = canvas.getContext('2d')!
     const duration = video.duration
@@ -115,7 +114,7 @@ export default function VideoStudioPage() {
       video.src = v.url
       video.muted = true
       await new Promise<void>(resolve => { video.onloadedmetadata = () => resolve() })
-      const extracted = await extractFrames(video, v.file)
+      const extracted = await extractFrames(video)
       extracted.forEach(f => allFrames.push({ ...f, timestamp: f.timestamp + totalDuration, mimeType: 'image/jpeg' }))
       totalDuration += v.duration
     }
@@ -208,7 +207,7 @@ export default function VideoStudioPage() {
         const data = await res.json()
         setError(data.error || 'Failed to generate voiceover')
       }
-    } catch (e) {
+    } catch {
       setError('Failed to generate voiceover')
     }
   }
@@ -271,7 +270,7 @@ export default function VideoStudioPage() {
         const data = await res.json()
         setError(data.error || 'Failed to start render')
       }
-    } catch (e) {
+    } catch {
       setError('Failed to render video')
     }
   }
