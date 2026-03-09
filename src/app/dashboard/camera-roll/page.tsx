@@ -436,6 +436,18 @@ export default function CameraRollPage() {
                     fontSize: '12px', fontWeight: 800, color: '#fff',
                   }}>✓</div>
                 )}
+                {/* Delete button */}
+                <button
+                  onClick={e => { e.stopPropagation(); setFiles(prev => prev.filter(x => x.id !== f.id)) }}
+                  style={{
+                    position: 'absolute', bottom: '8px', right: '8px',
+                    background: 'rgba(239,68,68,0.85)', color: '#fff',
+                    border: 'none', borderRadius: '8px',
+                    width: '24px', height: '24px', fontSize: '13px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    cursor: 'pointer', fontWeight: 700, lineHeight: 1,
+                  }}
+                >✕</button>
                 {f.location && (
                   <div style={{ padding: '4px 8px', fontSize: '10px', color: 'rgba(255,255,255,0.5)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     📍 {f.location}
