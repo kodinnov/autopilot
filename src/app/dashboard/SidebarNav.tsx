@@ -4,11 +4,12 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
 const links = [
-  { href: '/dashboard',             label: 'Dashboard',   icon: '📊', exact: true },
-  { href: '/dashboard/compose',     label: 'Compose',     icon: '✍️' },
-  { href: '/dashboard/schedule',    label: 'Schedule',    icon: '📅' },
-  { href: '/dashboard/connections', label: 'Connections', icon: '🔗' },
-  { href: '/dashboard/ai',          label: 'AI Writer',   icon: '🤖' },
+  { href: '/dashboard',             label: 'Dashboard',    icon: '📊', exact: true },
+  { href: '/dashboard/compose',     label: 'Compose',      icon: '✍️' },
+  { href: '/dashboard/schedule',    label: 'Schedule',     icon: '📅' },
+  { href: '/dashboard/camera-roll', label: 'Camera Roll',  icon: '📸' },
+  { href: '/dashboard/connections', label: 'Connections',  icon: '🔗' },
+  { href: '/dashboard/ai',          label: 'AI Writer',    icon: '🤖' },
 ]
 
 export default function SidebarNav() {
