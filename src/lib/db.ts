@@ -1,16 +1,27 @@
 import { Pool } from 'pg'
 
-// Serverless-safe pool: minimal connections, short timeouts
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: { rejectUnauthorized: false },
-  max: 1,
-  idleTimeoutMillis: 10000,
-  connectionTimeoutMillis: 10000,
-})
+// Lazy pool — created on first use so DATABASE_URL is guaranteed to be loaded
+let _pool: Pool | null = null
+
+function getPool(): Pool {
+  if (!_pool) {
+    const connectionString = process.env.DATABASE_URL
+    if (!connectionString) {
+      throw new Error('DATABASE_URL environment variable is not set')
+    }
+    _pool = new Pool({
+      connectionString,
+      ssl: { rejectUnauthorized: false },
+      max: 1,
+      idleTimeoutMillis: 10000,
+      connectionTimeoutMillis: 10000,
+    })
+  }
+  return _pool
+}
 
 async function query<T = Record<string, unknown>>(text: string, params?: unknown[]): Promise<T[]> {
-  const client = await pool.connect()
+  const client = await getPool().connect()
   try {
     const result = await client.query(text, params)
     return result.rows as T[]
