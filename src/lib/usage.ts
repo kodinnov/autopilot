@@ -2,12 +2,12 @@ import { query } from './db'
 
 // Cost estimates per operation (USD)
 export const COSTS = {
-  xai_frame_analysis: 0.002,
-  xai_caption: 0.001,
-  xai_script: 0.002,
-  elevenlabs_voiceover: 0.0003, // per character
-  shotstack_render: 0.10,
-  x_api_tweet: 0.001,
+  xai_frame_analysis: 0.01,    // Grok Vision per call
+  xai_caption: 0.005,          // per caption
+  xai_script: 0.02,            // per script generation
+  elevenlabs_voiceover: 0.0003, // $0.30/1000 chars
+  shotstack_render: 0.10,      // per render
+  x_api_tweet: 0.00,           // included in plan
 } as const
 
 // Plan limits (monthly)

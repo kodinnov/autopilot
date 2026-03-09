@@ -9,6 +9,7 @@ const links = [
   { href: '/dashboard/schedule',    label: 'Schedule',     icon: '📅' },
   { href: '/dashboard/camera-roll', label: 'Camera Roll',  icon: '📸' },
   { href: '/dashboard/video-studio', label: 'Video Studio', icon: '🎬' },
+  { href: '/dashboard/usage',       label: 'Usage',        icon: '📈' },
   { href: '/dashboard/connections', label: 'Connections',  icon: '🔗' },
   { href: '/dashboard/ai',          label: 'AI Writer',    icon: '🤖' },
 ]
